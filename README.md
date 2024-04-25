@@ -11,6 +11,18 @@
 
 ```bash
 composer install lynnfly/hyperf-gateway-worker
+```
+
+### 发布配置
+
+```bash
+php bin/hyperf.php vendor:publish lynnfly/hyperf-gateway-worker
+```
+
+### 查看命令帮助
+
+```bash
+php bin/hyperf.php gateway:worker --help
 
 Description:
   Gateway Worker Service.
@@ -25,18 +37,6 @@ Options:
   -r, --register                  Enable register service
   -g, --gateway                   Enable gateway service
   -d, --daemon                    Run the worker in daemon mode.
-```
-
-### 发布配置
-
-```bash
-php bin/hyperf.php vendor:publish lynnfly/hyperf-gateway-worker
-```
-
-### 查看命令帮助
-
-```bash
-php bin/hyperf.php gateway:worker --help
 ```
 
 ### 启动服务
@@ -57,7 +57,7 @@ php bin/hyperf.php gateway:worker -r -g start
 
 #### 业务代码示例
 
-1. 修改gateway-worker配置文件中的event_handler配置项为你的业务类
+1. 修改gateway_worker.php配置文件中的event_handler配置项为你的业务类
 
 ```php
 return [
