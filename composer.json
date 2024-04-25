@@ -1,0 +1,32 @@
+{
+  "name": "lynnfly/hyperf-gateway-worker",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "LynnFly\\GatewayWorker\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "LynnFly",
+      "email": "fly@eyabc.cn"
+    }
+  ],
+  "require": {
+    "php": ">=8.0",
+    "hyperf/config": "~3.0.0",
+    "hyperf/command": "^3.0",
+    "yurunsoft/workerman-gateway-sdk": "^1.0",
+    "hyperf/di": "^3.0",
+    "hyperf/process": "^3.0",
+    "hyperf/logger": "^3.0"
+  },
+  "extra": {
+    "hyperf": {
+      "config": "LynnFly\\GatewayWorker\\ConfigProvider"
+    }
+  },
+  "require-dev": {
+    "swoole/ide-helper": "^5.1"
+  }
+}
