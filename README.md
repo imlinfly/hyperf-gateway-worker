@@ -10,7 +10,7 @@
 ### 安装
 
 ```bash
-composer install lynnfly/hyperf-gateway-worker
+composer require lynnfly/hyperf-gateway-worker
 ```
 
 ### 发布配置
@@ -47,9 +47,6 @@ Options:
 <div style="color:#ff4545">
 具体请参考GatewayWorker官方文档。
 </div>
-
-```bash
-</span>
 
 ```bash
 php bin/hyperf.php gateway:worker -r -g start
