@@ -59,6 +59,8 @@ class HookGateway
      */
     public function hookContext(): void
     {
+        $this->checkClassExist('GatewayWorker\Lib\Context');
+
         $path = $this->getName('Lib_Context');
         if (file_exists($path)) {
             require_once $path;
@@ -144,6 +146,7 @@ class HookGateway
      */
     public function hookGateway(): void
     {
+        $this->checkClassExist(Gateway::class);
         $path = $this->getName('Lib_Gateway');
         if (file_exists($path)) {
             require_once $path;
@@ -238,6 +241,19 @@ class HookGateway
         }
 
         require_once $path;
+    }
+
+    /**
+     * 检查类是否存在
+     * @param string $className
+     * @return void
+     */
+    public function checkClassExist(string $className): void
+    {
+        if (class_exists($className, false)) {
+            // 类 xx 不能在GatewayBusinessProcess进程启动前引入
+            throw new RuntimeException('Class ' . $className . ' can not be loaded before GatewayBusinessProcess process start');
+        }
     }
 
     /**

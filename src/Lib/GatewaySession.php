@@ -12,10 +12,13 @@ namespace LynnFly\GatewayWorker\Lib;
 
 use GatewayWorker\Lib\Context;
 use GatewayWorker\Lib\Gateway;
+use GatewayWorker\Protocols\GatewayProtocol;
 
 class GatewaySession
 {
     protected static string $key = 'session';
+
+    protected static array $sessionVersion = [];
 
     public static function get(string $key = null, mixed $default = null): mixed
     {
@@ -57,9 +60,28 @@ class GatewaySession
         Context::set(static::$key, []);
     }
 
-    public static function init(): void
+    public static function init(int $cmd, array $data): void
     {
-        $session = Gateway::getSession(Context::get('client_id'));
+        $clientId = Context::get('client_id');
+        $extData = $data['ext_data'] ?? '';
+        $version = &static::$sessionVersion[$clientId];
+
+        if ($cmd !== GatewayProtocol::CMD_ON_CLOSE && isset($version) && $version !== crc32($extData)) {
+            $session = Gateway::getSession($clientId);
+            $version = crc32($extData);
+        } else {
+            if (!isset(static::$sessionVersion[$clientId])) {
+                $version = crc32($extData);
+            }
+            // 尝试解析 session
+            if ($extData != '') {
+                $session = Context::sessionDecode($extData);
+
+            } else {
+                $session = null;
+            }
+        }
+
         Context::set('old_session', $session);
         Context::set(static::$key, $session);
     }
@@ -68,12 +90,18 @@ class GatewaySession
     {
         $clientId = Context::get('client_id');
         $oldSession = Context::get('old_session');
-
         $session = Context::get(static::$key);
 
-        // 如果session有变化则保存
-        if ($oldSession !== $session && is_array($session)) {
-            Gateway::updateSession($clientId, $session);
+        // 判断 session 是否被更改
+        if ($session !== $oldSession) {
+            $sessionString = $session !== null ? Context::sessionEncode($session) : '';
+            Gateway::setSocketSession($clientId, $sessionString);
+            static::$sessionVersion[$clientId] = crc32($sessionString);
         }
+    }
+
+    public static function deleteSessionVersion(string $clientId): void
+    {
+        unset(static::$sessionVersion[$clientId]);
     }
 }

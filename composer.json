@@ -19,7 +19,8 @@
     "yurunsoft/workerman-gateway-sdk": "^1.0",
     "hyperf/di": "~3.0.0",
     "hyperf/process": "~3.0.0",
-    "hyperf/logger": "~3.0.0"
+    "hyperf/logger": "~3.0.0",
+    "hyperf/event": "^3.0"
   },
   "extra": {
     "hyperf": {

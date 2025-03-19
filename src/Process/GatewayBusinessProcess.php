@@ -11,13 +11,13 @@ declare (strict_types=1);
 namespace LynnFly\GatewayWorker\Process;
 
 use GatewayWorker\Lib\Context;
-use GatewayWorker\Lib\Gateway;
 use GatewayWorker\Protocols\GatewayProtocol;
 use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\Coroutine\Coroutine;
 use Hyperf\Process\AbstractProcess;
 use Hyperf\Process\ProcessManager;
 use LynnFly\GatewayWorker\EventHandler;
+use LynnFly\GatewayWorker\Lib\GatewayConfig;
 use LynnFly\GatewayWorker\Lib\GatewaySession;
 use LynnFly\GatewayWorker\Lib\HookGateway;
 use LynnFly\GatewayWorker\Proxy\GatewaySessionProxy;
@@ -47,14 +47,14 @@ class GatewayBusinessProcess extends AbstractProcess
 
     public function initProcessParams()
     {
-        $config = $this->getConfig();
+        $config = GatewayConfig::getBusiness();
         $this->name = $config['name'];
         $this->nums = $config['count'];
     }
 
     public function isEnable($server): bool
     {
-        return boolval($this->getConfig()['enable']);
+        return boolval(GatewayConfig::getBusiness('enable', false));
     }
 
     public function handle(): void
@@ -78,7 +78,7 @@ class GatewayBusinessProcess extends AbstractProcess
      */
     public function create(): void
     {
-        $config = $this->getConfig();
+        $config = GatewayConfig::getBusiness();
         $channel = new Channel($config['channel_count']);
 
         $handler = $config['event_handler'];
@@ -137,7 +137,7 @@ class GatewayBusinessProcess extends AbstractProcess
                                     break;
                             }
 
-                            $this->clearContext($message);
+                            $this->clearContext($clientId, $message);
                             break;
                     }
                 }
@@ -158,7 +158,7 @@ class GatewayBusinessProcess extends AbstractProcess
     {
         /** @var GatewaySessionProxy $_SESSION */
         if (!$_SESSION instanceof GatewaySessionProxy) {
-            $this->logger->error('Please do not cover the $_SESSION variable, otherwise it will cause data confusion!');
+            $this->logger->notice('Please do not cover the $_SESSION variable, otherwise it will cause data confusion!');
             $_SESSION = $this->session;
         }
 
@@ -169,20 +169,25 @@ class GatewayBusinessProcess extends AbstractProcess
         Context::set('connection_id', $message['connection_id']);
         Context::set('client_id', $clientId);
 
-        if ($message['cmd'] !== GatewayProtocol::CMD_ON_CLOSE) {
-            GatewaySession::init();
-        }
+        GatewaySession::init($message['cmd'], $message);
     }
 
     /**
      * 清理上下文
+     * @param string $clientId
      * @param array $message
      * @return void
      */
-    public function clearContext(array $message): void
+    public function clearContext(string $clientId, array $message): void
     {
-        if ($message['cmd'] !== GatewayProtocol::CMD_ON_CLOSE) {
-            GatewaySession::save();
+        switch ($message['cmd']) {
+            case GatewayProtocol::CMD_ON_CLOSE:
+                GatewaySession::deleteSessionVersion($clientId);
+                break;
+
+            default:
+                GatewaySession::save();
+                break;
         }
     }
 
@@ -193,13 +198,13 @@ class GatewayBusinessProcess extends AbstractProcess
      */
     public function createGatewayWorkerClient(Channel $channel): void
     {
-        $config = $this->getConfig();
+        $config = GatewayConfig::getBusiness();
+
+        GatewayConfig::initGatewayClient();
 
         $gatewayConfig = new GatewayWorkerConfig();
-        $gatewayConfig->setRegisterAddress($config['register_address']);
-
-        // Gateway Client 配置
-        Gateway::$registerAddress = $gatewayConfig->getRegisterAddress();
+        $gatewayConfig->setRegisterAddress($config['register_address'])
+            ->setSecretKey($config['register_secret_key']);
 
         $config['worker_key'] ??= getmypid() . '-' . Coroutine::id();
         $workerKey = value($config['worker_key']);
@@ -225,12 +230,15 @@ class GatewayBusinessProcess extends AbstractProcess
                 ],
             ]);
         };
+
+        $this->logger->info("BusinessWorker#{$workerKey} client running.");
+
         $client->run();
     }
 
     public function getConfig(): array
     {
-        return config('gateway_worker.business', [
+        $defaultConfig = [
             // 是否启用
             'enable' => true,
             // 业务进程名称
@@ -245,6 +253,10 @@ class GatewayBusinessProcess extends AbstractProcess
             'event_handler' => EventHandler::class,
             // 注册中心地址
             'register_address' => ['127.0.0.1:1236'],
-        ]);
+        ];
+
+        $config = config('gateway_worker.business', []);
+
+        return array_merge($defaultConfig, $config);
     }
 }

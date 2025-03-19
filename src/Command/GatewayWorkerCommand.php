@@ -7,6 +7,7 @@ namespace LynnFly\GatewayWorker\Command;
 use GatewayWorker\Gateway;
 use GatewayWorker\Register;
 use Hyperf\Command\Command;
+use LynnFly\GatewayWorker\Lib\GatewayConfig;
 use Symfony\Component\Console\Input\InputOption;
 use Workerman\Worker;
 use function Hyperf\Config\config as config;
@@ -57,10 +58,7 @@ class GatewayWorkerCommand extends Command
 
         Worker::$daemonize = (bool)$this->input->getOption('daemon');
 
-        $config = config('gateway_worker.options', [
-            'pidFile' => BASE_PATH . '/runtime/gateway-worker.pid',
-            'logFile' => BASE_PATH . '/runtime/gateway-worker.log',
-        ]);
+        $config = GatewayConfig::getOptions();
 
         foreach ($config as $name => $value) {
             if (property_exists(Worker::class, $name)) {
@@ -77,10 +75,7 @@ class GatewayWorkerCommand extends Command
      */
     protected function register(): Register
     {
-        $config = config('gateway_worker.register', [
-            'listen' => 'text://127.0.0.1:1238',
-            'name' => 'RegisterService',
-        ]);
+        $config = GatewayConfig::getRegister();
 
         return $this->createProcess(Register::class, $config);
     }
@@ -91,10 +86,7 @@ class GatewayWorkerCommand extends Command
      */
     protected function gateway(): Gateway
     {
-        $config = config('gateway_worker.gateway', [
-            'listen' => 'websocket://0.0.0.0:7272',
-            'name' => 'GatewayService',
-        ]);
+        $config = GatewayConfig::getGateway();
 
         return $this->createProcess(Gateway::class, $config);
     }

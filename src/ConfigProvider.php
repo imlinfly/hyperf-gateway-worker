@@ -23,6 +23,9 @@ class ConfigProvider
             'commands' => [
                 Command\GatewayWorkerCommand::class,
             ],
+            'listeners' => [
+                Listener\StartListener::class,
+            ],
             'publish' => [
                 [
                     'id' => 'config',

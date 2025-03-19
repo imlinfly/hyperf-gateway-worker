@@ -25,6 +25,10 @@ return [
         'event_handler' => LynnFly\GatewayWorker\EventHandler::class,
         // 注册中心地址
         'register_address' => ['127.0.0.1:1236'],
+        // 注册中心密钥
+        'register_secret_key' => '',
+        // 业务进程Key
+        // 'worker_key' => null,
     ],
 
     // 网关进程
@@ -56,7 +60,9 @@ return [
         // 注册中心进程数量 必须是1个进程
         'count' => 1,
         // 注册中心选项
-        'options' => [],
+        'options' => [
+            'secretKey' => '',
+        ],
     ],
 
     'options' => [
