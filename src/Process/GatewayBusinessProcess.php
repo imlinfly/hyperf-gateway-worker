@@ -28,6 +28,7 @@ use Workerman\Gateway\Config\GatewayWorkerConfig;
 use Workerman\Gateway\Gateway\Contract\IGatewayClient;
 use Workerman\Gateway\Gateway\GatewayWorkerClient;
 use function Hyperf\Config\config;
+use function Hyperf\Coroutine\wait;
 use function Hyperf\Support\value;
 use function Swoole\Coroutine\parallel;
 
@@ -94,58 +95,69 @@ class GatewayBusinessProcess extends AbstractProcess
                         break;
                     }
 
-                    switch ($result['type']) {
-                        // 异常处理
-                        case 'onException':
-                            /** @var Throwable $th */
-                            ['th' => $th] = $result['data'];
-                            if (method_exists($handler, 'onException')) {
-                                $handler::onException($th);
-                            }
-                            break;
-
-                        // 网关消息处理
-                        case 'onGatewayMessage':
-                            /** @var IGatewayClient $client */
-                            ['message' => $message] = $result['data'];
-
-                            $clientId = Context::addressToClientId($message['local_ip'], $message['local_port'], $message['connection_id']);
-
-                            $this->initContext($message, $clientId);
-
-                            switch ($message['cmd']) {
-                                case GatewayProtocol::CMD_ON_WEBSOCKET_CONNECT:
-                                    if (method_exists($handler, 'onWebSocketConnect')) {
-                                        $handler::onWebSocketConnect($clientId, $message['body']);
-                                    }
-                                    break;
-
-                                case GatewayProtocol::CMD_ON_CONNECT:
-                                    if (method_exists($handler, 'onConnect')) {
-                                        $handler::onConnect($clientId);
-                                    }
-                                    break;
-                                case GatewayProtocol::CMD_ON_MESSAGE:
-                                    if (method_exists($handler, 'onMessage')) {
-                                        $handler::onMessage($clientId, $message['body']);
-                                    }
-                                    break;
-                                case GatewayProtocol::CMD_ON_CLOSE:
-                                    if (method_exists($handler, 'onClose')) {
-                                        $handler::onClose($clientId);
-                                    }
-                                    break;
-                            }
-
-                            $this->clearContext($clientId, $message);
-                            break;
-                    }
+                    wait(fn() => $this->handleGatewayMessage($result, $handler));
                 }
             });
         });
 
         // 连接 Gateway Worker
         $this->createGatewayWorkerClient($channel);
+    }
+
+    /**
+     * 处理网关发来的消息
+     * @param array $result
+     * @param string $handler
+     * @return void
+     */
+    public function handleGatewayMessage(array $result, string $handler): void
+    {
+        switch ($result['type']) {
+            // 异常处理
+            case 'onException':
+                /** @var Throwable $th */
+                ['th' => $th] = $result['data'];
+                if (method_exists($handler, 'onException')) {
+                    $handler::onException($th);
+                }
+                break;
+
+            // 网关消息处理
+            case 'onGatewayMessage':
+                /** @var IGatewayClient $client */
+                ['message' => $message] = $result['data'];
+
+                $clientId = Context::addressToClientId($message['local_ip'], $message['local_port'], $message['connection_id']);
+
+                $this->initContext($message, $clientId);
+
+                switch ($message['cmd']) {
+                    case GatewayProtocol::CMD_ON_WEBSOCKET_CONNECT:
+                        if (method_exists($handler, 'onWebSocketConnect')) {
+                            $handler::onWebSocketConnect($clientId, $message['body']);
+                        }
+                        break;
+
+                    case GatewayProtocol::CMD_ON_CONNECT:
+                        if (method_exists($handler, 'onConnect')) {
+                            $handler::onConnect($clientId);
+                        }
+                        break;
+                    case GatewayProtocol::CMD_ON_MESSAGE:
+                        if (method_exists($handler, 'onMessage')) {
+                            $handler::onMessage($clientId, $message['body']);
+                        }
+                        break;
+                    case GatewayProtocol::CMD_ON_CLOSE:
+                        if (method_exists($handler, 'onClose')) {
+                            $handler::onClose($clientId);
+                        }
+                        break;
+                }
+
+                $this->clearContext($clientId, $message);
+                break;
+        }
     }
 
     /**
